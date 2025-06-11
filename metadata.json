@@ -1,0 +1,5 @@
+{
+  "name": "Menu Titan convertor",
+  "description": "An app that converts menus from files to a TMS format",
+  "requestFramePermissions": []
+}
