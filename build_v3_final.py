@@ -16,8 +16,8 @@ GROUPS={
  'extra_prot':("Ajoutez vos protéines supplémentaires (5 maximum)",[118,119,120,121]),
  'extra_acc':("Ajoutez vos accompagnements supplémentaires (5 maximum)",[122,123,124,125]),
  'extra_top':("Ajoutez vos toppings supplémentaires (5 maximum)",[126]),
- 'yakitori':("Choix quantité",[135,136,137]),
- 'gyoza':("Choix quantité",[141,142,143]),
+ 'yakitori':("Choix quantité yakitori",[135,136,137]),
+ 'gyoza':("Choix quantité gyoza",[141,142,143]),
  'chirashi':("Voulez-vous un supplément ?",[77]),
 }
 PARENT={
