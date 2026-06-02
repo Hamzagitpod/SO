@@ -16,32 +16,31 @@ def opt(cat,n,p):
 
 GROUPS={
  "Sauce (obligatoire, 1)":[("Andalouse",0),("Mayo",0),("Ketchup",0)],
- "Parfum Looza (obligatoire, 1)":[("Pomme",0),("Orange",0),("Cerise",0)],
+ "Suppléments (facultatif)":[("Gouda",1.5),("Biscuit",1.5),("Cacahuètes",1.5)],
 }
-
-DB=[]  # (item_row, [group names])
-# --- PLATS 12 € ---
+DB=[]
+# PLATS 12 €
 for n in ["Pâtes bolognaise","Pâtes 4 fromages","Boulette sauce tomate"]:
     DB.append(item("Plats",n,12))
 DB.append(item("Plats","Hamburger frites",12,"Sauce au choix",groups=["Sauce (obligatoire, 1)"]))
-# --- SALADES 9 € (avec demi-baguette) ---
+# SALADES 9 €
 for n in ["Thon pêche","Saumon","Américain","Crevette Rose","Tomate crevette","César","Asperge Jambon","Végétarien"]:
     DB.append(item("Salades",n,9,"Avec demi-baguette"))
-# --- PETITE FAIM ---
-DB.append(item("Petite Faim","Portion de fromage",4))
-DB.append(item("Petite Faim","Assiette mixte",8))        # prix lu sous reflet -> à vérifier
-DB.append(item("Petite Faim","Assiette brochette",10))   # prix lu sous reflet -> à vérifier
-DB.append(item("Petite Faim","Gouda, biscuit ou cacahuètes",1.5))
-# --- SNACKS ---
+# PETITE FAIM  (Gouda/Biscuit/Cacahuètes = suppléments, plus un produit)
+for n,p in [("Portion de fromage",4),("Assiette mixte",8),("Assiette brochette",10)]:
+    DB.append(item("Petite Faim",n,p,groups=["Suppléments (facultatif)"]))
+# SNACKS
 for n,p in [("Kinder Bueno",3),("Snickers",1.5),("Mentos",1.7),("M&M's",2.7),("Chips",2),("Frutella",1.8)]:
     DB.append(item("Snacks",n,p))
-# --- SOFT ---
-for n,p in [("Coca, coca zéro",2.5),("Sprite",2.5),("Fanta",2.5),("Ice-Tea pétillant, pêche ou Green",2.6),
-            ("Shweppes tonic ou agrumes",2.7),("Shweppes Hibiscus",3.1),("Gini",2.6),("Oasis",2.8),
-            ("Redbull",3.5),("Cécémel froid",3.1),("Eau plate ou pétillante",2.1)]:
+# SOFT — produits combinés séparés en items distincts
+for n,p in [("Coca",2.5),("Coca Zéro",2.5),("Sprite",2.5),("Fanta",2.5),
+            ("Ice-Tea pétillant",2.6),("Ice-Tea pêche",2.6),("Ice-Tea Green",2.6),
+            ("Shweppes tonic",2.7),("Shweppes agrumes",2.7),("Shweppes Hibiscus",3.1),
+            ("Gini",2.6),("Oasis",2.8),("Redbull",3.5),("Cécémel froid",3.1),
+            ("Eau plate",2.1),("Eau pétillante",2.1),
+            ("Looza pomme",2.8),("Looza orange",2.8),("Looza cerise",2.8)]:
     DB.append(item("Soft",n,p))
-DB.append(item("Soft","Looza",2.8,groups=["Parfum Looza (obligatoire, 1)"]))
-# --- BIÈRES (alcool, ABV best-effort; None = à confirmer) ---
+# BIÈRES (alcool)
 BIERES=[("Jupiler 25cl",2.5,5.2),("Jupiler 33cl",3.0,5.2),("Jupiler 50cl",3.4,5.2),
  ("Leffe blonde 25cl",3.4,6.6),("Leffe blonde 33cl",4.0,6.6),("Scootch cts 25cl",3.5,None),("Scootch cts 33cl",4.3,None),
  ("Kriek belle vue",3.1,5.2),("Kriek",3.5,5.0),("Carlsberg",3.2,5.0),("Chimay Bleue",4.8,9.0),("Chimay dorée",4.1,4.8),
@@ -50,21 +49,19 @@ BIERES=[("Jupiler 25cl",2.5,5.2),("Jupiler 33cl",3.0,5.2),("Jupiler 50cl",3.4,5.
  ("Orval",4.5,6.2),("Peche mel bush",4.2,None),("Paix dieu triple",4.7,10.0),("Quintine blonde",4.4,8.0),
  ("Saint feuillien",4.3,7.5),("Saint feuillien de Noël",4.3,9.0),("Westmalle triple",4.5,9.5),("Bass",4.5,5.0)]
 for n,p,a in BIERES: DB.append(item("Bières",n,p,alc=True,abv=a))
-# --- VIN (alcool) ---
+# VIN (alcool)
 for n in ["Rouge merlot","Blanc chardonnay","Rosé"]:
     DB.append(item("Vin",n,2.7,alc=True,abv=12.5))
-# --- PETITE PANNE ? ---
+# PETITE PANNE ?
 DB.append(item("Petite Panne ?","Briquet",2))
 
 rows=[HEADER]; ni=nog=nopt=0
 for r,groups in DB:
-    rows.append(r); ni+=1
-    cat=r[2]
+    rows.append(r); ni+=1; cat=r[2]
     for g in groups:
         rows.append(og(cat,g)); nog+=1
         for on,op in GROUPS[g]:
             rows.append(opt(cat,on,op)); nopt+=1
-
 buf=io.StringIO(); w=csv.writer(buf,quoting=csv.QUOTE_MINIMAL,lineterminator='\r\n')
 for r in rows: w.writerow(r)
 open(OUT,'w',encoding='utf-8',newline='').write(buf.getvalue())
