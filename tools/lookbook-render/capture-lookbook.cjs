@@ -35,6 +35,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { spawn, execSync } = require('child_process');
 
 // ----------------------------- configuration --------------------------------
@@ -44,9 +45,15 @@ function bool(v) { return /^(1|true|yes|on)$/i.test(v || ''); }
 const HTML_PATH = path.resolve(
   process.argv[2] || process.env.LOOKBOOK_HTML || 'Lookbook_CCM_x_Orion.html'
 );
+// FORCE_FORMAT rewrites the component's format (the standalone export ignores
+// the data-props "default", so 9:16 must be forced). It also picks the native
+// vertical/horizontal resolution when WIDTH/HEIGHT aren't given explicitly.
+const FORCE_FORMAT = process.env.FORCE_FORMAT || null;   // '9:16' | '16:9'
+const IS_VERTICAL  = FORCE_FORMAT === '9:16';
+
 const FPS       = num(process.env.FPS, 60);
-const OUT_W     = Math.round(num(process.env.WIDTH, 1920));
-const OUT_H     = Math.round(num(process.env.HEIGHT, 1080));
+const OUT_W     = Math.round(num(process.env.WIDTH,  IS_VERTICAL ? 1080 : 1920));
+const OUT_H     = Math.round(num(process.env.HEIGHT, IS_VERTICAL ? 1920 : 1080));
 const SCALE     = num(process.env.SCALE, 1);            // deviceScaleFactor
 const CRF       = Math.round(num(process.env.CRF, 18));
 const PRESET    = process.env.PRESET || 'slow';
@@ -108,6 +115,36 @@ function installVirtualClock() {
       return queue.length;
     }
   };
+}
+
+// ----------------------------- format patch ---------------------------------
+// The bundle's runtime exposes each prop as its editor *descriptor* object, not
+// its value, so `this.props.format` is never the string '9:16' and the layout
+// always falls back to 16:9. Rewrite the component source to hardcode the wanted
+// format, then load the patched copy from a temp file. Returns the path to load.
+function maybePatchFormat(htmlPath, fmt) {
+  if (!fmt) return htmlPath;
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const re = /(<script type="__bundler\/template">)([\s\S]*?)(<\/script>)/;
+  const m = html.match(re);
+  if (!m) { console.warn('[warn] template du bundle introuvable — FORCE_FORMAT ignoré'); return htmlPath; }
+  const tpl = JSON.parse(m[2]);
+  // Replace the RHS expression `this.props.format || '16:9'` (works whether the
+  // component declares it with const or let, across export variants).
+  const patched = tpl.replace(/this\.props\.format \|\| '16:9'/, "'" + fmt + "'");
+  if (patched === tpl) {
+    console.warn("[warn] expression `this.props.format || '16:9'` non trouvée — FORCE_FORMAT ignoré");
+    return htmlPath;
+  }
+  // Re-encode, escaping `</` as `<\/` so the inner `</script>` inside the template
+  // doesn't prematurely close the outer <script type="__bundler/template"> tag.
+  const json = JSON.stringify(patched).replace(/<\//g, '<\\/');
+  const outHtml = html.slice(0, m.index) + m[1] + json + m[3] +
+    html.slice(m.index + m[0].length);
+  const out = path.join(os.tmpdir(), 'lookbook-' + fmt.replace(':', 'x') + '-' + process.pid + '.html');
+  fs.writeFileSync(out, outHtml);
+  console.log('▶ Format   : forcé en ' + fmt + ' (copie patchée : ' + out + ')');
+  return out;
 }
 
 // ----------------------------- ffmpeg ---------------------------------------
@@ -184,7 +221,8 @@ function writeFrame(stdin, buf) {
   }
 
   await page.addInitScript(installVirtualClock);
-  await page.goto('file://' + HTML_PATH, { waitUntil: 'load' });
+  const loadPath = maybePatchFormat(HTML_PATH, FORCE_FORMAT);
+  await page.goto('file://' + loadPath, { waitUntil: 'load' });
 
   // 1) Wait for the app to mount (its rAF loop has registered a callback).
   await page.waitForFunction(
@@ -199,7 +237,7 @@ function writeFrame(stdin, buf) {
   });
   await page.addStyleTag({ content:
     'html,body{overflow:hidden!important;margin:0!important;background:#0a0a0b!important;}' +
-    (SHOW_CONTROLS ? '' : '#ed-play{display:none!important;}')
+    (SHOW_CONTROLS ? '' : '#ed-play,#ed-fmt{display:none!important;}')
   });
 
   // 3) Auto-detect the loop duration from the component source (this.TOTAL).

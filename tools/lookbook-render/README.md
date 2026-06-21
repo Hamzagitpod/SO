@@ -64,7 +64,8 @@ OUT=ccm-orion.mp4 node capture-lookbook.cjs ./Lookbook.html
 | `DURATION`      | auto (43.6)        | Durée à capturer, en secondes                          |
 | `CRF`           | `18`               | Qualité x264 (0 = sans perte, 18 ≈ visuellement parfait) |
 | `PRESET`        | `slow`             | Preset x264 (`veryslow` pour la compression maximale)  |
-| `SHOW_CONTROLS` | (masqué)           | `1` pour garder l'overlay `❚❚ PAUSE`                   |
+| `SHOW_CONTROLS` | (masqué)           | `1` pour garder les overlays `❚❚ PAUSE` / `▯ 9:16`     |
+| `FORCE_FORMAT`  | (aucun)            | `9:16` ou `16:9` — force la mise en page (voir ci-dessous) |
 | `FFMPEG`        | `ffmpeg`           | Chemin du binaire ffmpeg                               |
 | `VENDOR_DIR`    | (désactivé)        | Dossier de dépendances CDN locales (rendu hors-ligne)  |
 
@@ -94,14 +95,23 @@ VENDOR_DIR=./vendor node capture-lookbook.cjs ./Lookbook.html
 # Qualité maximale, suréchantillonnage x2 puis downscale Lanczos -> 1080p net
 SCALE=2 PRESET=veryslow node capture-lookbook.cjs ./Lookbook.html
 
-# Format vertical 1080x1920 (le composant se reconfigure automatiquement)
-WIDTH=1080 HEIGHT=1920 node capture-lookbook.cjs ./Lookbook.html
+# Format vertical 9:16 — vrai re-layout (1080x1920 auto)
+FORCE_FORMAT=9:16 node capture-lookbook.cjs ./Lookbook.html
 
 # Master sans perte (CRF 0) pour archivage / réencodage ultérieur
 CRF=0 OUT=master.mp4 node capture-lookbook.cjs ./Lookbook.html
 ```
 
-> Note : le format vertical 9:16 dépend de `this.props.format`. Régler `WIDTH`/`HEIGHT`
-> change la taille du viewport ; le composant met la scène à l'échelle via `fit()`.
-> Pour un vrai re-layout 9:16, ouvrir le lookbook avec `?format=9:16` si l'éditeur
-> le permet.
+## Format 9:16 (vertical) vs 16:9
+
+Le composant choisit sa mise en page via `this.props.format`. Mais dans l'export
+« standalone », le runtime expose chaque prop sous la forme de son **objet
+descripteur** (`{editor, options, default, …}`) et non de sa valeur : `this.props.format`
+n'est donc jamais la chaîne `'9:16'`, et la mise en page **retombe toujours sur 16:9**
+(le `"default":"9:16"` du fichier n'est qu'un indice d'éditeur).
+
+`FORCE_FORMAT=9:16` corrige cela : le script charge une copie patchée du HTML où
+l'expression `this.props.format || '16:9'` est remplacée par `'9:16'`, ce qui déclenche
+le vrai `reflowVertical()` du composant (image plein cadre en haut, titres en bas) et
+fixe automatiquement la résolution native **1080×1920**. Le fichier d'origine n'est
+jamais modifié. Utilisez `FORCE_FORMAT=16:9` pour forcer l'inverse.
