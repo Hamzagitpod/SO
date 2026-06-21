@@ -1,0 +1,15 @@
+{
+  "name": "lookbook-render",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frame-exact, timeline-synced capture of the CCM x Orion lookbook animation to H.264 MP4 (Playwright + FFmpeg).",
+  "bin": {
+    "lookbook-render": "capture-lookbook.cjs"
+  },
+  "scripts": {
+    "render": "node capture-lookbook.cjs"
+  },
+  "dependencies": {
+    "playwright": "^1.56.0"
+  }
+}
